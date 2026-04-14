@@ -333,7 +333,7 @@ const SegmentedControl = ({
         value === 'individual' ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"
       )}
     >
-      单人
+      个人
     </button>
   </div>
 );
@@ -375,16 +375,24 @@ const TemplateModal = ({
   const [editName, setEditName] = useState('');
   const [templateToDelete, setTemplateToDelete] = useState<string | null>(null);
   const [parsingTemplateId, setParsingTemplateId] = useState<string | null>(null);
+  const [fileSizeError, setFileSizeError] = useState(false);
 
   if (!isOpen) return null;
 
   const handleFileUpload = () => {
+    if (parsingTemplateId) return;
+    
     const input = document.createElement('input');
     input.type = 'file';
     input.accept = '.doc,.docx,.pdf';
     input.onchange = (e) => {
       const file = (e.target as HTMLInputElement).files?.[0];
       if (file) {
+        if (file.size > 1024 * 1024) {
+          setFileSizeError(true);
+          return;
+        }
+        
         const newId = `custom-${Date.now()}`;
         const newTemplate: Template = {
           id: newId,
@@ -534,7 +542,13 @@ const TemplateModal = ({
             <div className="p-4 border-t border-gray-100 bg-gray-50/50 flex flex-col items-center">
               <button
                 onClick={handleFileUpload}
-                className="w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-sm text-gray-600 hover:text-blue-600 hover:bg-blue-50 border border-dashed border-gray-300 hover:border-blue-300 transition-colors bg-white"
+                disabled={!!parsingTemplateId}
+                className={cn(
+                  "w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-lg text-sm transition-colors border border-dashed",
+                  parsingTemplateId 
+                    ? "bg-gray-50 text-gray-400 border-gray-200 cursor-not-allowed" 
+                    : "text-gray-600 hover:text-blue-600 hover:bg-blue-50 border-gray-300 hover:border-blue-300 bg-white"
+                )}
               >
                 <Plus className="w-4 h-4" />
                 <span className="font-medium">上传新模板</span>
@@ -755,6 +769,24 @@ const TemplateModal = ({
             </div>
           </div>
         )}
+
+        {/* File Size Error Modal */}
+        {fileSizeError && (
+          <div className="absolute inset-0 bg-black/20 flex items-center justify-center z-50 rounded-xl">
+            <div className="bg-white rounded-lg shadow-lg p-6 w-80">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">文件过大，无法上传</h3>
+              <p className="text-gray-500 text-sm mb-6 leading-relaxed">模板文档不能超过 1MB，请精简内容（如移除高清图片）后重新上传。</p>
+              <div className="flex justify-end">
+                <button 
+                  onClick={() => setFileSizeError(false)}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-500 hover:bg-blue-600 rounded-lg transition-colors"
+                >
+                  我知道了
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -857,11 +889,41 @@ export default function App() {
   // Edit tracking state
   const [isEdited, setIsEdited] = useState(false);
   const [resetKey, setResetKey] = useState(0);
-  
+  const [isPromptEmpty, setIsPromptEmpty] = useState(false);
+  const promptContainerRef = React.useRef<HTMLDivElement>(null);
+
+  const checkPromptEmpty = React.useCallback(() => {
+    setTimeout(() => {
+      if (!promptContainerRef.current) return;
+      
+      // Find all text-containing elements that could be part of the prompt
+      const elements = promptContainerRef.current.querySelectorAll('span');
+      let totalText = '';
+      
+      elements.forEach(el => {
+        // Only count text from elements that are not hidden
+        if (el.style.display !== 'none' && !el.classList.contains('hidden')) {
+          // If it's an EditableText or InlineField
+          if (el.getAttribute('contenteditable') === 'true' || el.classList.contains('inline-field')) {
+            totalText += el.textContent || '';
+          }
+        }
+      });
+      
+      const cleaned = totalText.replace(/[\u200B]/g, '').trim();
+      setIsPromptEmpty(cleaned.length === 0);
+    }, 0);
+  }, []);
+
   // Report specific state
   const [reportMode, setReportMode] = useState<ReportMode>('group');
   const [reportDataSource, setReportDataSource] = useState<ReportDataSource>('single');
   const [reportHasUploadedFile, setReportHasUploadedFile] = useState(false);
+
+  // Reset prompt empty state when agent or mode changes
+  React.useEffect(() => {
+    setIsPromptEmpty(false);
+  }, [activeAgent, planMode, reportMode, reportDataSource, resetKey]);
 
   // Handlers
   const handleCloseAgent = () => {
@@ -889,6 +951,7 @@ export default function App() {
 
   const handleRestoreDefault = () => {
     setIsEdited(false);
+    setIsPromptEmpty(false);
     setResetKey(prev => prev + 1);
   };
 
@@ -928,11 +991,71 @@ export default function App() {
     );
   };
 
-  const renderUploadBox = (title: string, hint: string, onUpload: () => void) => (
+  const DownloadDropdown = ({ options, buttonText = "下载数据模板" }: { options?: string[], buttonText?: string }) => {
+    const [isOpen, setIsOpen] = useState(false);
+    const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+    React.useEffect(() => {
+      const handleClickOutside = (event: MouseEvent) => {
+        if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+          setIsOpen(false);
+        }
+      };
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
+
+    if (!options || options.length === 0) {
+      return <button className="text-blue-500 hover:text-blue-600 font-medium">{buttonText}</button>;
+    }
+
+    return (
+      <div className="relative" ref={dropdownRef}>
+        <button 
+          onClick={() => setIsOpen(!isOpen)}
+          className={cn(
+            "flex items-center gap-1 font-medium transition-colors px-3 py-1.5 rounded-full -mr-3",
+            isOpen ? "bg-blue-50 text-blue-600" : "text-blue-500 hover:text-blue-600 hover:bg-blue-50/50"
+          )}
+        >
+          {buttonText}
+          <ChevronDown className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")} />
+        </button>
+        
+        <AnimatePresence>
+          {isOpen && (
+            <motion.div
+              initial={{ opacity: 0, y: 4 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 4 }}
+              transition={{ duration: 0.15 }}
+              className="absolute right-0 top-full mt-1 w-56 bg-white rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] border border-gray-100 py-2 z-50"
+            >
+              {options.map((opt, i) => (
+                <button
+                  key={i}
+                  onClick={() => setIsOpen(false)}
+                  className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
+                >
+                  <div className="w-6 h-7 rounded bg-green-100 text-green-600 flex items-center justify-center shrink-0 relative overflow-hidden">
+                    <div className="absolute top-0 right-0 w-2 h-2 bg-white rounded-bl"></div>
+                    <span className="text-[11px] font-bold mt-1">X</span>
+                  </div>
+                  <span className="truncate">{opt}</span>
+                </button>
+              ))}
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
+    );
+  };
+
+  const renderUploadBox = (title: string, hint: string, onUpload: () => void, downloadOptions?: string[], downloadText?: string) => (
     <div className="flex flex-col gap-3 mt-2">
       <div className="flex items-center justify-between text-sm">
         <span className="text-gray-500">{title}</span>
-        <button className="text-blue-500 hover:text-blue-600 font-medium">下载数据模板</button>
+        <DownloadDropdown options={downloadOptions} buttonText={downloadText} />
       </div>
       
       <div 
@@ -1020,10 +1143,14 @@ export default function App() {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
             transition={{ duration: 0.2 }}
-            className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm"
+            className="flex flex-col bg-gray-50/80 border border-gray-100 rounded-xl p-5"
           >
-            <div className="text-gray-700 text-base leading-loose mb-6">
-              <EditableText>为一名 </EditableText><InlineField value="女" hasDropdown /><EditableText> 、 </EditableText><InlineField value="初三" hasDropdown /><EditableText> 的用户生成体测报告。</EditableText>
+            <div className="text-gray-700 text-base leading-loose mb-6 flex flex-wrap items-center gap-x-1">
+              <span>为一名</span>
+              <InlineField value="女" hasDropdown />
+              <span>、</span>
+              <InlineField value="初三" hasDropdown />
+              <span>的用户生成体测报告。</span>
             </div>
             
             <div className="text-sm text-gray-500 mb-4">
@@ -1090,11 +1217,13 @@ export default function App() {
             className="flex flex-col gap-4"
           >
             {!reportHasUploadedFile ? (
-              <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+              <div className="flex flex-col">
                 {renderUploadBox(
                   "上传多次体测成绩", 
                   "支持格式：Excel / CSV ，文件内容需包含项目 + 成绩，建议下载多次体测成绩模板文件",
-                  () => setReportHasUploadedFile(true)
+                  () => setReportHasUploadedFile(true),
+                  ['一、二年级', '三、四、五、六年级', '初中及以上（男）', '初中及以上（女）'],
+                  "下载体测成绩模板"
                 )}
               </div>
             ) : (
@@ -1109,8 +1238,12 @@ export default function App() {
                     <X className="w-3 h-3" />
                   </button>
                 </div>
-                <div className="text-gray-700 text-base leading-loose px-1">
-                  <EditableText>基于上传的体测数据，为一名 </EditableText><InlineField value="女" hasDropdown /><EditableText> 、 </EditableText><InlineField value="初三" hasDropdown /><EditableText> 的用户生成体测报告。</EditableText>
+                <div className="text-gray-700 text-base leading-loose px-1 flex flex-wrap items-center gap-x-1">
+                  <span>基于上传的体测数据，为一名</span>
+                  <InlineField value="女" hasDropdown />
+                  <span>、</span>
+                  <InlineField value="初三" hasDropdown />
+                  <span>的用户生成体测报告。</span>
                 </div>
               </>
             )}
@@ -1120,19 +1253,27 @@ export default function App() {
     </div>
   );
 
+  const showSendButton = (() => {
+    if (activeAgent === 'plan' && planMode === 'group' && !hasUploadedFile) return false;
+    if (activeAgent === 'report' && reportMode === 'group' && !reportHasUploadedFile) return false;
+    if (activeAgent === 'report' && reportMode === 'individual' && reportDataSource === 'multiple' && !reportHasUploadedFile) return false;
+    return true;
+  })();
+
   const isSendEnabled = (() => {
     if (activeAgent === null) return chatInput.trim().length > 0;
-    if (activeAgent === 'lesson') return true;
-    if (activeAgent === 'plan') {
-      return planMode === 'individual' || hasUploadedFile;
+    if (isPromptEmpty) return false;
+    return true;
+  })();
+
+  const disabledReason = (() => {
+    if (activeAgent === null && chatInput.trim().length === 0) {
+      return "请输入你的需求";
     }
-    if (activeAgent === 'report') {
-      if (reportMode === 'group') return reportHasUploadedFile;
-      if (reportMode === 'individual') {
-        return reportDataSource === 'single' || reportHasUploadedFile;
-      }
+    if (isPromptEmpty) {
+      return "请输入你的需求";
     }
-    return false;
+    return "";
   })();
 
   return (
@@ -1155,10 +1296,10 @@ export default function App() {
         </motion.h1>
 
         {/* Input Box Area */}
-        <div className="w-full bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.04)] border border-gray-100 overflow-hidden flex flex-col transition-all duration-300">
+        <div className="w-full bg-white rounded-2xl shadow-[0_2px_12px_rgba(0,0,0,0.04)] border border-gray-100 flex flex-col transition-all duration-300">
           
           {/* Content Area (Top) */}
-          <div className="p-6 min-h-[160px] flex flex-col">
+          <div className="p-6 min-h-[160px] flex flex-col rounded-t-2xl">
             {activeAgent === null && (
               <>
                 {chatFiles.length > 0 && (
@@ -1190,8 +1331,8 @@ export default function App() {
             )}
             
             {/* Lesson Mode */}
-            <EditContext.Provider value={{ onEdit: () => setIsEdited(true) }}>
-              <div key={resetKey}>
+            <EditContext.Provider value={{ onEdit: () => { setIsEdited(true); checkPromptEmpty(); } }}>
+              <div key={resetKey} ref={promptContainerRef}>
                 {activeAgent === 'lesson' && renderLessonContent()}
                 
                 {/* Plan Mode */}
@@ -1212,7 +1353,7 @@ export default function App() {
           </div>
 
           {/* Command Bar (Bottom) */}
-          <div className="px-4 py-3 bg-white border-t border-gray-50 flex items-center justify-between">
+          <div className="px-4 py-3 bg-white border-t border-gray-50 flex items-center justify-between rounded-b-2xl">
             
             {/* Left Side: Context & Config */}
             <div className="flex items-center gap-3">
@@ -1308,7 +1449,7 @@ export default function App() {
                                 : "text-gray-500 hover:text-gray-700"
                             )}
                           >
-                            单次体测
+                            单次
                           </button>
                           <button 
                             onClick={() => setReportDataSource('multiple')}
@@ -1319,7 +1460,7 @@ export default function App() {
                                 : "text-gray-500 hover:text-gray-700"
                             )}
                           >
-                            多次历史
+                            多次
                           </button>
                         </div>
                       </div>
@@ -1341,15 +1482,28 @@ export default function App() {
                 </button>
               )}
               
-              <button 
-                disabled={!isSendEnabled}
-                className={cn(
-                  "w-9 h-9 rounded-full flex items-center justify-center text-white transition-all duration-200",
-                  isSendEnabled ? "bg-blue-600 hover:bg-blue-700 shadow-sm hover:shadow-md hover:-translate-y-0.5" : "bg-gray-300 hover:bg-gray-400 cursor-not-allowed"
-                )}
-              >
-                <ArrowUp className="w-5 h-5" />
-              </button>
+              {showSendButton && (
+                <div className="relative group flex items-center justify-center">
+                  <button 
+                    disabled={!isSendEnabled}
+                    className={cn(
+                      "w-9 h-9 rounded-full flex items-center justify-center text-white transition-all duration-200",
+                      isSendEnabled ? "bg-blue-600 hover:bg-blue-700 shadow-sm hover:shadow-md hover:-translate-y-0.5" : "bg-gray-300 hover:bg-gray-400 cursor-not-allowed"
+                    )}
+                  >
+                    <ArrowUp className="w-5 h-5" />
+                  </button>
+                  
+                  {!isSendEnabled && disabledReason && (
+                    <div className="absolute bottom-full mb-2 hidden group-hover:flex flex-col items-center pointer-events-none whitespace-nowrap z-50">
+                      <div className="bg-gray-900 text-white text-xs px-3 py-2 rounded shadow-lg">
+                        {disabledReason}
+                      </div>
+                      <div className="w-0 h-0 border-l-[6px] border-l-transparent border-r-[6px] border-r-transparent border-t-[6px] border-t-gray-900 -mt-[1px]"></div>
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </div>
         </div>
