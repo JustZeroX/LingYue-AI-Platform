@@ -170,9 +170,40 @@ const initialTemplates: Template[] = [
   { id: 'sys-2', name: '模板一', type: 'system' },
 ];
 
+export const GENDER_OPTIONS = ['男', '女'];
+export const GRADE_OPTIONS = [
+  { category: '小学', items: ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级'] },
+  { category: '初中', items: ['七年级', '八年级', '九年级'] },
+  { category: '高中', items: ['高一', '高二', '高三'] },
+  { category: '大学', items: ['大一', '大二', '大三', '大四'] },
+  { category: '成人', items: ['成人'] }
+];
+
+type SimpleDropdownOption = string;
+type CascadingDropdownOption = {
+  category: string;
+  items: string[];
+};
+type DropdownOptions = SimpleDropdownOption[] | CascadingDropdownOption[];
+
 // --- Helper Compon// Inline editable field (the blue text)
-const InlineField = ({ value, hasDropdown = false, onClick, className }: { value: string, hasDropdown?: boolean, onClick?: () => void, className?: string }) => {
+const InlineField = ({ 
+  value, 
+  hasDropdown = false, 
+  dropdownOptions,
+  onClick, 
+  className 
+}: { 
+  value: string, 
+  hasDropdown?: boolean, 
+  dropdownOptions?: DropdownOptions,
+  onClick?: () => void, 
+  className?: string 
+}) => {
   const [val, setVal] = useState(value);
+  const [isOpen, setIsOpen] = useState(false);
+  const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const dropdownRef = React.useRef<HTMLSpanElement>(null);
   const spanRef = React.useRef<HTMLSpanElement>(null);
   const { onEdit } = React.useContext(EditContext);
   
@@ -183,20 +214,133 @@ const InlineField = ({ value, hasDropdown = false, onClick, className }: { value
     }
   }, [value]);
 
+  React.useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   const isInteractive = onClick || hasDropdown;
 
   if (isInteractive) {
+    const isCascading = dropdownOptions && typeof dropdownOptions[0] !== 'string';
+    
+    // Initialize active category for cascading dropdown
+    React.useEffect(() => {
+      if (isOpen && isCascading) {
+        const options = dropdownOptions as CascadingDropdownOption[];
+        const currentCategory = options.find(opt => opt.items.includes(val))?.category || options[0].category;
+        setActiveCategory(currentCategory);
+      }
+    }, [isOpen, isCascading, dropdownOptions, val]);
+
     return (
-      <span 
-        onClick={onClick}
-        className={cn(
-          "inline-field inline-flex items-center gap-1 px-3 py-1 mx-1 text-blue-600 bg-white hover:bg-gray-50 rounded-lg transition-colors text-base font-medium border border-gray-200 shadow-sm",
-          onClick ? "cursor-pointer" : "cursor-text",
-          className
+      <span className="relative inline-block" ref={dropdownRef}>
+        <span 
+          onClick={(e) => {
+            if (onClick) onClick();
+            if (hasDropdown) {
+              setIsOpen(!isOpen);
+            }
+          }}
+          className={cn(
+            "inline-field inline-flex items-center gap-1 px-3 py-1 mx-1 text-blue-600 bg-white hover:bg-gray-50 rounded-lg transition-colors text-base font-medium border border-gray-200 shadow-sm",
+            (onClick || hasDropdown) ? "cursor-pointer" : "cursor-text",
+            className
+          )}
+        >
+          {val}
+          {hasDropdown && <ChevronDown className="w-4 h-4 text-gray-400" />}
+        </span>
+        
+        {isOpen && dropdownOptions && (
+          <div className="absolute top-full left-0 mt-1 bg-white border border-gray-200 rounded-lg shadow-lg z-50 overflow-hidden flex w-max">
+            {!isCascading ? (
+              <div className="flex flex-col min-w-[80px] py-1">
+                {(dropdownOptions as string[]).map(option => (
+                  <button
+                    key={option}
+                    className={cn(
+                      "px-4 py-2 text-left text-sm hover:bg-gray-50 transition-colors",
+                      val === option ? "text-blue-600 font-medium bg-blue-50/50" : "text-gray-700"
+                    )}
+                    onClick={() => {
+                      setVal(option);
+                      setIsOpen(false);
+                      onEdit();
+                    }}
+                  >
+                    {option}
+                  </button>
+                ))}
+              </div>
+            ) : (
+              <>
+                <div className="flex flex-col w-28 border-r border-gray-100 py-1 bg-gray-50/50">
+                  {(dropdownOptions as CascadingDropdownOption[]).map(opt => {
+                    const isDirect = opt.items.length === 1 && opt.items[0] === opt.category;
+                    return (
+                      <button
+                        key={opt.category}
+                        className={cn(
+                          "px-4 py-2 text-left text-sm flex items-center justify-between transition-colors",
+                          activeCategory === opt.category ? "text-blue-600 font-medium bg-white" : "text-gray-700 hover:bg-gray-100"
+                        )}
+                        onMouseEnter={() => {
+                          setActiveCategory(opt.category);
+                        }}
+                        onClick={() => {
+                          if (isDirect) {
+                            setVal(opt.items[0]);
+                            setIsOpen(false);
+                            onEdit();
+                          } else {
+                            setActiveCategory(opt.category);
+                          }
+                        }}
+                      >
+                        {opt.category}
+                        {!isDirect && <ChevronRight className="w-3.5 h-3.5 opacity-50" />}
+                      </button>
+                    );
+                  })}
+                </div>
+                {(() => {
+                  const activeOpt = (dropdownOptions as CascadingDropdownOption[]).find(opt => opt.category === activeCategory);
+                  const showRightPanel = activeOpt && !(activeOpt.items.length === 1 && activeOpt.items[0] === activeOpt.category);
+                  
+                  if (!showRightPanel) return null;
+                  
+                  return (
+                    <div className="flex flex-col w-32 py-1 bg-white max-h-[200px] overflow-y-auto">
+                      {activeOpt.items.map(item => (
+                        <button
+                          key={item}
+                          className={cn(
+                            "px-4 py-2 text-left text-sm hover:bg-gray-50 transition-colors flex items-center gap-2",
+                            val === item ? "text-blue-600 font-medium" : "text-gray-700"
+                          )}
+                          onClick={() => {
+                            setVal(item);
+                            setIsOpen(false);
+                            onEdit();
+                          }}
+                        >
+                          {val === item && <Check className="w-3.5 h-3.5" />}
+                          <span className={cn(val !== item && "ml-5")}>{item}</span>
+                        </button>
+                      ))}
+                    </div>
+                  );
+                })()}
+              </>
+            )}
+          </div>
         )}
-      >
-        {val}
-        {hasDropdown && <ChevronDown className="w-4 h-4 text-gray-400" />}
       </span>
     );
   }
@@ -960,7 +1104,7 @@ export default function App() {
     const detailsClass = showDetails ? "" : "hidden";
     return (
       <div className="text-gray-700 text-base leading-loose">
-        <EditableText>为 </EditableText><InlineField value="三年级" /><EditableText> 设计一节 </EditableText><InlineField value="足球" /><EditableText> 课的教案，时长 </EditableText><InlineField value="40" /><EditableText> 分钟，面向 </EditableText><InlineField value="30" /><EditableText> 名学生。</EditableText>
+        <EditableText>为 </EditableText><InlineField value="三年级" hasDropdown dropdownOptions={GRADE_OPTIONS} /><EditableText> 设计一节 </EditableText><InlineField value="足球" /><EditableText> 课的教案，时长 </EditableText><InlineField value="40" /><EditableText> 分钟，面向 </EditableText><InlineField value="30" /><EditableText> 名学生。</EditableText>
         
         <div className="deletable-block block mt-4 w-full" contentEditable={false}>
           <button 
@@ -1106,7 +1250,7 @@ export default function App() {
     const detailsClass = showDetails ? "" : "hidden";
     return (
       <div className="text-gray-700 text-base leading-loose">
-        <EditableText>为一名 </EditableText><InlineField value="女" hasDropdown /><EditableText> 、 </EditableText><InlineField value="16" /><EditableText> 岁的用户生成一份个人运动计划，身高 </EditableText><InlineField value="172" /><EditableText> 厘米，体重 </EditableText><InlineField value="60" /><EditableText> 千克，单次运动时长 </EditableText><InlineField value="30" /><EditableText> 分钟，运动目的 </EditableText><InlineField value="增强体能" /><EditableText> ，想提升的技能 </EditableText><InlineField value="跑步速度" /><EditableText> 。</EditableText>
+        <EditableText>为一名 </EditableText><InlineField value="女" hasDropdown dropdownOptions={GENDER_OPTIONS} /><EditableText> 、 </EditableText><InlineField value="16" /><EditableText> 岁的用户生成一份个人运动计划，身高 </EditableText><InlineField value="172" /><EditableText> 厘米，体重 </EditableText><InlineField value="60" /><EditableText> 千克，单次运动时长 </EditableText><InlineField value="30" /><EditableText> 分钟，运动目的 </EditableText><InlineField value="增强体能" /><EditableText> ，想提升的技能 </EditableText><InlineField value="跑步速度" /><EditableText> 。</EditableText>
         
         <div className="deletable-block block mt-4 w-full" contentEditable={false}>
           <button 
@@ -1147,9 +1291,9 @@ export default function App() {
           >
             <div className="text-gray-700 text-base leading-loose mb-6 flex flex-wrap items-center gap-x-1">
               <span>为一名</span>
-              <InlineField value="女" hasDropdown />
+              <InlineField value="女" hasDropdown dropdownOptions={GENDER_OPTIONS} />
               <span>、</span>
-              <InlineField value="初三" hasDropdown />
+              <InlineField value="初三" hasDropdown dropdownOptions={GRADE_OPTIONS} />
               <span>的用户生成体测报告。</span>
             </div>
             
@@ -1240,9 +1384,9 @@ export default function App() {
                 </div>
                 <div className="text-gray-700 text-base leading-loose px-1 flex flex-wrap items-center gap-x-1">
                   <span>基于上传的体测数据，为一名</span>
-                  <InlineField value="女" hasDropdown />
+                  <InlineField value="女" hasDropdown dropdownOptions={GENDER_OPTIONS} />
                   <span>、</span>
-                  <InlineField value="初三" hasDropdown />
+                  <InlineField value="初三" hasDropdown dropdownOptions={GRADE_OPTIONS} />
                   <span>的用户生成体测报告。</span>
                 </div>
               </>
@@ -1339,7 +1483,7 @@ export default function App() {
                 {activeAgent === 'plan' && planMode === 'group' && !hasUploadedFile && 
                   renderUploadBox("上传群体的运动/体测数据", "支持格式：Excel / CSV ，文件内容需包含项目、姓名（或学号）、年级、性别和成绩", () => setHasUploadedFile(true))}
                 {activeAgent === 'plan' && planMode === 'group' && hasUploadedFile && 
-                  renderUploadedFile("数据模板.xlsx", () => setHasUploadedFile(false), <><EditableText>为 </EditableText><InlineField value="三年级" /><EditableText> 的学生，设计群体运动计划。运动目的 </EditableText><InlineField value="保持健康" /><EditableText> ，想提升的技能 </EditableText><InlineField value="跑步速度" /><EditableText> 。</EditableText></>)}
+                  renderUploadedFile("数据模板.xlsx", () => setHasUploadedFile(false), <><EditableText>为 </EditableText><InlineField value="三年级" hasDropdown dropdownOptions={GRADE_OPTIONS} /><EditableText> 的学生，设计群体运动计划。运动目的 </EditableText><InlineField value="保持健康" /><EditableText> ，想提升的技能 </EditableText><InlineField value="跑步速度" /><EditableText> 。</EditableText></>)}
                 {activeAgent === 'plan' && planMode === 'individual' && renderPlanIndividual()}
 
                 {/* Report Mode */}
