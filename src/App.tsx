@@ -1290,11 +1290,11 @@ export default function App() {
             className="flex flex-col bg-gray-50/80 border border-gray-100 rounded-xl p-5"
           >
             <div className="text-gray-700 text-base leading-loose mb-6 flex flex-wrap items-center gap-x-1">
-              <span>为一名</span>
+              <EditableText>为一名</EditableText>
               <InlineField value="女" hasDropdown dropdownOptions={GENDER_OPTIONS} />
-              <span>、</span>
+              <EditableText>、</EditableText>
               <InlineField value="初三" hasDropdown dropdownOptions={GRADE_OPTIONS} />
-              <span>的用户生成体测报告。</span>
+              <EditableText>的用户生成体测报告。</EditableText>
             </div>
             
             <div className="text-sm text-gray-500 mb-4">
@@ -1383,11 +1383,11 @@ export default function App() {
                   </button>
                 </div>
                 <div className="text-gray-700 text-base leading-loose px-1 flex flex-wrap items-center gap-x-1">
-                  <span>基于上传的体测数据，为一名</span>
+                  <EditableText>基于上传的体测数据，为一名</EditableText>
                   <InlineField value="女" hasDropdown dropdownOptions={GENDER_OPTIONS} />
-                  <span>、</span>
+                  <EditableText>、</EditableText>
                   <InlineField value="初三" hasDropdown dropdownOptions={GRADE_OPTIONS} />
-                  <span>的用户生成体测报告。</span>
+                  <EditableText>的用户生成体测报告。</EditableText>
                 </div>
               </>
             )}
