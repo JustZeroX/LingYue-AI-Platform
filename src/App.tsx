@@ -171,6 +171,8 @@ const initialTemplates: Template[] = [
 ];
 
 export const GENDER_OPTIONS = ['男', '女'];
+export const PLAN_CYCLE_OPTIONS = ['4周', '8周', '12周', '一学期'];
+export const PLAN_FOCUS_OPTIONS = ['耐力', '力量', '柔韧性', '速度与灵敏', '综合体质'];
 export const GRADE_OPTIONS = [
   { category: '小学', items: ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级'] },
   { category: '初中', items: ['七年级', '八年级', '九年级'] },
@@ -1246,6 +1248,39 @@ export default function App() {
     );
   };
 
+  const renderPlanGroupPrompt = () => {
+    const detailsClass = showDetails ? "" : "hidden";
+    return (
+      <>
+        <EditableText>基于上传的数据，生成一份群体运动计划：计划周期 </EditableText>
+        <InlineField value="8周" hasDropdown dropdownOptions={PLAN_CYCLE_OPTIONS} />
+        <EditableText> ，每周 </EditableText>
+        <InlineField value="2节" />
+        <EditableText> 体育课，本阶段重点提升 </EditableText>
+        <InlineField value="柔韧性" hasDropdown dropdownOptions={PLAN_FOCUS_OPTIONS} />
+        <EditableText> 。</EditableText>
+
+        <div className="deletable-block block mt-4 w-full" contentEditable={false}>
+          <button 
+            onClick={() => setShowDetails(!showDetails)}
+            className="flex items-center gap-1 text-blue-500 text-sm font-medium hover:text-blue-600 transition-colors mb-2"
+          >
+            {showDetails ? <ChevronDown className="w-4 h-4" /> : <ChevronRight className="w-4 h-4" />}
+            更详细描述
+          </button>
+        </div>
+
+        <EditableText className={detailsClass}>本学期主要教学项目 </EditableText>
+        <InlineField className={detailsClass} value="花样跳绳、篮球、跑跳" />
+        <EditableText className={detailsClass}> ，重点关注学生情况 </EditableText>
+        <InlineField className={detailsClass} value="有哮喘的学生" />
+        <EditableText className={detailsClass}> ，数据采集时间 </EditableText>
+        <InlineField className={detailsClass} value="2025年9月" />
+        <EditableText className={detailsClass}> 。</EditableText>
+      </>
+    );
+  };
+
   const renderPlanIndividual = () => {
     const detailsClass = showDetails ? "" : "hidden";
     return (
@@ -1483,7 +1518,7 @@ export default function App() {
                 {activeAgent === 'plan' && planMode === 'group' && !hasUploadedFile && 
                   renderUploadBox("上传群体的运动/体测数据", "支持格式：Excel / CSV ，文件内容需包含项目、姓名（或学号）、年级、性别和成绩", () => setHasUploadedFile(true))}
                 {activeAgent === 'plan' && planMode === 'group' && hasUploadedFile && 
-                  renderUploadedFile("数据模板.xlsx", () => setHasUploadedFile(false), <><EditableText>为 </EditableText><InlineField value="三年级" hasDropdown dropdownOptions={GRADE_OPTIONS} /><EditableText> 的学生，设计群体运动计划。运动目的 </EditableText><InlineField value="保持健康" /><EditableText> ，想提升的技能 </EditableText><InlineField value="跑步速度" /><EditableText> 。</EditableText></>)}
+                  renderUploadedFile("数据模板.xlsx", () => setHasUploadedFile(false), renderPlanGroupPrompt())}
                 {activeAgent === 'plan' && planMode === 'individual' && renderPlanIndividual()}
 
                 {/* Report Mode */}
