@@ -171,7 +171,7 @@ const initialTemplates: Template[] = [
 ];
 
 export const GENDER_OPTIONS = ['男', '女'];
-export const PLAN_CYCLE_OPTIONS = ['4周', '8周', '12周', '一学期'];
+export const PLAN_CYCLE_OPTIONS = ['4 周', '8 周', '12 周', '一学期'];
 export const PLAN_FOCUS_OPTIONS = ['耐力', '力量', '柔韧性', '速度与灵敏', '综合体质'];
 export const GRADE_OPTIONS = [
   { category: '小学', items: ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级'] },
@@ -1253,11 +1253,11 @@ export default function App() {
     return (
       <>
         <EditableText>基于上传的数据，生成一份群体运动计划：计划周期 </EditableText>
-        <InlineField value="8周" hasDropdown dropdownOptions={PLAN_CYCLE_OPTIONS} />
+        <InlineField value="4 周" hasDropdown dropdownOptions={PLAN_CYCLE_OPTIONS} />
         <EditableText> ，每周 </EditableText>
-        <InlineField value="2节" />
+        <InlineField value="2 节" />
         <EditableText> 体育课，本阶段重点提升 </EditableText>
-        <InlineField value="柔韧性" hasDropdown dropdownOptions={PLAN_FOCUS_OPTIONS} />
+        <InlineField value="耐力" hasDropdown dropdownOptions={PLAN_FOCUS_OPTIONS} />
         <EditableText> 。</EditableText>
 
         <div className="deletable-block block mt-4 w-full" contentEditable={false}>
@@ -1270,12 +1270,12 @@ export default function App() {
           </button>
         </div>
 
-        <EditableText className={detailsClass}>本学期主要教学项目 </EditableText>
-        <InlineField className={detailsClass} value="花样跳绳、篮球、跑跳" />
+        <EditableText className={detailsClass}>目前教学项目  </EditableText>
+        <InlineField className={detailsClass} value="篮球" />
         <EditableText className={detailsClass}> ，重点关注学生情况 </EditableText>
         <InlineField className={detailsClass} value="有哮喘的学生" />
         <EditableText className={detailsClass}> ，数据采集时间 </EditableText>
-        <InlineField className={detailsClass} value="2025年9月" />
+        <InlineField className={detailsClass} value="2025 年 9 月" />
         <EditableText className={detailsClass}> 。</EditableText>
       </>
     );
@@ -1418,7 +1418,7 @@ export default function App() {
                   </button>
                 </div>
                 <div className="text-gray-700 text-base leading-loose px-1 flex flex-wrap items-center gap-x-1">
-                  <EditableText>基于上传的体测数据，为一名</EditableText>
+                  <EditableText>基于上传的数据，为一名</EditableText>
                   <InlineField value="女" hasDropdown dropdownOptions={GENDER_OPTIONS} />
                   <EditableText>、</EditableText>
                   <InlineField value="初三" hasDropdown dropdownOptions={GRADE_OPTIONS} />
@@ -1525,7 +1525,7 @@ export default function App() {
                 {activeAgent === 'report' && reportMode === 'group' && !reportHasUploadedFile && 
                   renderUploadBox("上传群体的体测数据", "支持格式：Excel / CSV ，文件内容需包含项目、姓名（或学号）、年级、性别和成绩", () => setReportHasUploadedFile(true))}
                 {activeAgent === 'report' && reportMode === 'group' && reportHasUploadedFile && 
-                  renderUploadedFile("群体体测数据.xlsx", () => setReportHasUploadedFile(false), <><EditableText>基于上传的群体数据，生成一份综合体测分析报告。</EditableText></>)}
+                  renderUploadedFile("群体体测数据.xlsx", () => setReportHasUploadedFile(false), <><EditableText>基于上传的数据，生成一份群体体测报告。</EditableText></>)}
                 {activeAgent === 'report' && reportMode === 'individual' && renderReportIndividual()}
               </div>
             </EditContext.Provider>
