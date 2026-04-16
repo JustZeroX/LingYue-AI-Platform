@@ -1156,16 +1156,20 @@ export default function App() {
     }
 
     return (
-      <div className="relative" ref={dropdownRef}>
+      <div className="relative inline-block" ref={dropdownRef}>
         <button 
-          onClick={() => setIsOpen(!isOpen)}
+          onClick={(e) => {
+            e.stopPropagation();
+            setIsOpen(!isOpen);
+          }}
           className={cn(
-            "flex items-center gap-1 font-medium transition-colors px-3 py-1.5 rounded-full -mr-3",
-            isOpen ? "bg-blue-50 text-blue-600" : "text-blue-500 hover:text-blue-600 hover:bg-blue-50/50"
+            "inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full transition-colors text-sm font-medium",
+            "bg-[#f0f4f8] hover:bg-[#e2e8f0]",
+            "text-blue-600"
           )}
         >
           {buttonText}
-          <ChevronDown className={cn("w-4 h-4 transition-transform", isOpen && "rotate-180")} />
+          <ChevronDown className={cn("w-4 h-4 text-gray-500 transition-transform", isOpen && "rotate-180")} />
         </button>
         
         <AnimatePresence>
@@ -1175,12 +1179,15 @@ export default function App() {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 4 }}
               transition={{ duration: 0.15 }}
-              className="absolute right-0 top-full mt-1 w-56 bg-white rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] border border-gray-100 py-2 z-50"
+              className="absolute right-0 top-full mt-2 w-56 bg-white rounded-xl shadow-[0_4px_20px_rgba(0,0,0,0.08)] border border-gray-100 py-2 z-50"
             >
               {options.map((opt, i) => (
                 <button
                   key={i}
-                  onClick={() => setIsOpen(false)}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setIsOpen(false);
+                  }}
                   className="w-full flex items-center gap-3 px-4 py-2.5 text-sm text-gray-700 hover:bg-gray-50 transition-colors text-left"
                 >
                   <div className="w-6 h-7 rounded bg-green-100 text-green-600 flex items-center justify-center shrink-0 relative overflow-hidden">
@@ -1201,7 +1208,9 @@ export default function App() {
     <div className="flex flex-col gap-3 mt-2">
       <div className="flex items-center justify-between text-sm">
         <span className="text-gray-500">{title}</span>
-        <DownloadDropdown options={downloadOptions} buttonText={downloadText} />
+        {(downloadOptions || downloadText) && (
+          <DownloadDropdown options={downloadOptions} buttonText={downloadText} />
+        )}
       </div>
       
       <div 
@@ -1214,8 +1223,15 @@ export default function App() {
         <div className="text-gray-700 font-medium">
           拖拽文件到此处 或 <span className="text-blue-500">点击上传</span>
         </div>
-        <div className="text-gray-400 text-xs">
-          {hint}
+        <div className="text-gray-400 text-xs flex items-center justify-center flex-wrap gap-x-1">
+          <span>{hint}</span>
+          {(downloadOptions || downloadText) && (
+            <>
+              <span>，建议下载</span>
+              <span className="text-blue-500">{downloadText?.replace(/^下载/, '') || "体测成绩模板"}</span>
+              <span>文件</span>
+            </>
+          )}
         </div>
       </div>
       <div className="text-center text-xs text-gray-400 mt-2">
@@ -1399,7 +1415,7 @@ export default function App() {
               <div className="flex flex-col">
                 {renderUploadBox(
                   "上传多次体测成绩", 
-                  "支持格式：Excel / CSV ，文件内容需包含项目 + 成绩，建议下载多次体测成绩模板文件",
+                  "支持格式：Excel / CSV ，文件内容需包含国测项目、成绩",
                   () => setReportHasUploadedFile(true),
                   ['一、二年级', '三、四、五、六年级', '初中及以上（男）', '初中及以上（女）'],
                   "下载体测成绩模板"
@@ -1516,14 +1532,26 @@ export default function App() {
                 
                 {/* Plan Mode */}
                 {activeAgent === 'plan' && planMode === 'group' && !hasUploadedFile && 
-                  renderUploadBox("上传群体的运动/体测数据", "支持格式：Excel / CSV ，文件内容需包含项目、姓名（或学号）、年级、性别和成绩", () => setHasUploadedFile(true))}
+                  renderUploadBox(
+                    "上传群体的体测数据", 
+                    "支持格式：Excel / CSV ，文件内容需包含国测项目、姓名（或学号）、年级、性别和成绩", 
+                    () => setHasUploadedFile(true),
+                    undefined,
+                    "下载数据模板"
+                  )}
                 {activeAgent === 'plan' && planMode === 'group' && hasUploadedFile && 
                   renderUploadedFile("数据模板.xlsx", () => setHasUploadedFile(false), renderPlanGroupPrompt())}
                 {activeAgent === 'plan' && planMode === 'individual' && renderPlanIndividual()}
 
                 {/* Report Mode */}
                 {activeAgent === 'report' && reportMode === 'group' && !reportHasUploadedFile && 
-                  renderUploadBox("上传群体的体测数据", "支持格式：Excel / CSV ，文件内容需包含项目、姓名（或学号）、年级、性别和成绩", () => setReportHasUploadedFile(true))}
+                  renderUploadBox(
+                    "上传群体的体测数据", 
+                    "支持格式：Excel / CSV ，文件内容需包含国测项目、姓名（或学号）、年级、性别和成绩", 
+                    () => setReportHasUploadedFile(true),
+                    ['一、二年级', '三、四、五、六年级', '初中及以上（男）', '初中及以上（女）'],
+                    "下载体测成绩模板"
+                  )}
                 {activeAgent === 'report' && reportMode === 'group' && reportHasUploadedFile && 
                   renderUploadedFile("群体体测数据.xlsx", () => setReportHasUploadedFile(false), <><EditableText>基于上传的数据，生成一份群体体测报告。</EditableText></>)}
                 {activeAgent === 'report' && reportMode === 'individual' && renderReportIndividual()}
