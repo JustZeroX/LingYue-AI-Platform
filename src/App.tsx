@@ -1106,8 +1106,10 @@ export default function App() {
     const detailsClass = showDetails ? "" : "hidden";
     return (
       <div className="text-gray-700 text-base leading-loose">
-        <EditableText>为 </EditableText><InlineField value="三年级" hasDropdown dropdownOptions={GRADE_OPTIONS} /><EditableText> 设计一节 </EditableText><InlineField value="足球" /><EditableText> 课的教案，时长 </EditableText><InlineField value="40" /><EditableText> 分钟，面向 </EditableText><InlineField value="30" /><EditableText> 名学生。</EditableText>
-        
+        <EditableText>为 </EditableText><InlineField value="三年级" hasDropdown dropdownOptions={GRADE_OPTIONS} /><EditableText> 设计一节 </EditableText><InlineField value="足球" /><EditableText> 课的教案，时长 </EditableText><InlineField value="40" /><EditableText> 分钟，面向 </EditableText><InlineField value="30" /><EditableText> 名学生，</EditableText>
+        <EditableText className={detailsClass}>教学重点 </EditableText>
+        <InlineField className={detailsClass} value="脚内侧传接球" />
+        <EditableText className={detailsClass}>。 </EditableText>
         <div className="deletable-block block mt-4 w-full" contentEditable={false}>
           <button 
             onClick={() => setShowDetails(!showDetails)}
@@ -1117,10 +1119,8 @@ export default function App() {
             更详细描述
           </button>
         </div>
-        
-        <EditableText className={detailsClass}>教学重点 </EditableText>
-        <InlineField className={detailsClass} value="脚内侧传接球" />
-        <EditableText className={detailsClass}> ，教学难点 </EditableText>
+      
+        <EditableText className={detailsClass}> 教学难点 </EditableText>
         <InlineField className={detailsClass} value="传球方向与力度控制" />
         <EditableText className={detailsClass}> ，课程目标聚焦 </EditableText>
         <InlineField className={detailsClass} value="技巧掌握与运用" />
