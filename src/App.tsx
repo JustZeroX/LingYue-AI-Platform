@@ -25,6 +25,7 @@ import {
   Loader2
 } from 'lucide-react';
 import { cn } from './lib/utils';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 // Context to track edits
 const EditContext = React.createContext({ onEdit: () => {} });
@@ -1015,8 +1016,21 @@ const getFileStyle = (filename: string) => {
 };
 
 export default function App() {
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  const activeAgent: AgentType = location.pathname.includes('/lesson-plan') ? 'lesson' :
+                      location.pathname.includes('/workout-plan') ? 'plan' :
+                      location.pathname.includes('/fitness-report') ? 'report' : null;
+
+  const setActiveAgent = (agent: AgentType) => {
+    if (agent === 'lesson') navigate('/lesson-plan');
+    else if (agent === 'plan') navigate('/workout-plan');
+    else if (agent === 'report') navigate('/fitness-report');
+    else navigate('/chat');
+  };
+
   // State
-  const [activeAgent, setActiveAgent] = useState<AgentType>(null);
   const [chatInput, setChatInput] = useState('');
   const [isDeepThinkEnabled, setIsDeepThinkEnabled] = useState(false);
   const [chatFiles, setChatFiles] = useState<File[]>([]);
